@@ -1,22 +1,29 @@
 package com.example.myfirstjetpackcompose.activity.function
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,8 +37,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -46,9 +55,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myfirstjetpackcompose.R
+import com.example.myfirstjetpackcompose.ui.theme.GrayLight
 import com.example.myfirstjetpackcompose.ui.theme.GrayLight50
-import com.example.myfirstjetpackcompose.ui.theme.SeaBlue
+import com.example.myfirstjetpackcompose.ui.theme.WhiteWithBlue
 import com.example.myfirstjetpackcompose.ui.theme.helveticaFamily
+import kotlinx.coroutines.launch
 
 /**
  * Основная функция отрисовки главного окна приложения
@@ -58,12 +69,13 @@ import com.example.myfirstjetpackcompose.ui.theme.helveticaFamily
 fun CreateMainActivity() {
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
     ) {
         LazyColumn(
             contentPadding = PaddingValues(15.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(count = 1){
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(count = 1) {
                 // Название приложения
                 ApplicationNameBox()
 
@@ -111,7 +123,7 @@ private fun ApplicationNameBox() {
  * */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun CreateTextEditAndButtonRefresh(onSubmit : (String) -> Unit) {
+private fun CreateTextEditAndButtonRefresh(onSubmit: (String) -> Unit) {
     // Текст, который ввёл пользователь
     val text = remember { mutableStateOf("") }
 
@@ -185,7 +197,7 @@ private fun CreateTextEditAndButtonRefresh(onSubmit : (String) -> Unit) {
  * 5. Градусы (ощущается как ...)
  * */
 @Composable
-private fun CreateMainTextTemperatureInfo(){
+private fun CreateMainTextTemperatureInfo() {
     // основной бокс, в котором будет лежать вся необходимая информация
     Box(
         modifier = Modifier
@@ -232,7 +244,7 @@ private fun CreateMainTextTemperatureInfo(){
                     modifier = Modifier.size(40.dp),
                     painter = painterResource(id = R.drawable.cloudy_icon),
                     contentDescription = "icon_feels_like_image",
-                    )
+                )
                 // температура "ощущается как..."
                 Text(
                     modifier = Modifier.padding(start = 10.dp),
@@ -258,34 +270,154 @@ private fun CreateMainTextTemperatureInfo(){
  * */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CreateTabRowSwitch(){
+private fun CreateTabRowSwitch() {
     val tabList = listOf("По часам", "За неделю")
-    val state = rememberPagerState{ tabList.size }
+    val pagerState = rememberPagerState { tabList.size }
+    val scrollScope = rememberCoroutineScope()
 
-    HorizontalPager(
-        state = state,
-        modifier = Modifier
-            .clip(RoundedCornerShape(5.dp))
-            .padding(start = 35.dp, end = 35.dp, top = 35.dp)
-    ) { page ->
-        TabRow(
-                selectedTabIndex = page,
-                indicator = {pos ->
+    // Создаем состояние для отслеживания выбранной вкладки
+    val (selectedTabIndex, setSelectedTabIndex) = remember { mutableIntStateOf(0) }
+
+    TabRow(
+        selectedTabIndex = selectedTabIndex,
+        indicator = { pos ->
+            pos.forEachIndexed { index, tabPosition ->
+                if (index == selectedTabIndex) {
                     TabRowDefaults.Indicator(
-                        Modifier.tabIndicatorOffset(currentTabPosition = pos[0])
+                        Modifier
+                            .fillMaxWidth()
+                            .tabIndicatorOffset(currentTabPosition = tabPosition)
+                            .size(0.dp)
+                            .background(Color.Transparent)
                     )
-                },
-                containerColor = GrayLight50) {
-                tabList.forEachIndexed { index, s ->
-                    Tab(
-                        selectedContentColor = SeaBlue,
-                        unselectedContentColor = Color.Black,
-                        selected = false,
-                        onClick = { /*TODO*/ },
-                        text = {
-                            Text(text = s)
-                        })
                 }
             }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 35.dp, end = 35.dp, top = 35.dp)
+            .background(Color.Transparent)
+    ) {
+        tabList.forEachIndexed { index, s ->
+            var customModifire: Modifier = Modifier.clickable {
+                setSelectedTabIndex(index)
+            }
+
+            if (selectedTabIndex == index) {
+                customModifire = Modifier
+                    .background(
+                        color = GrayLight50,
+                        shape = RoundedCornerShape(5.dp)
+                    )
+            }
+            Tab(
+                selectedContentColor = Color.Black,
+                unselectedContentColor = Color.Black,
+                selected = selectedTabIndex == index,
+                onClick = {
+                    setSelectedTabIndex(index)
+
+                    // Обновляем состояние pagerState при переключении вкладок
+                    scrollScope.launch {
+                        pagerState.scrollToPage(index)
+                    }
+                },
+                text = {
+                    Text(text = s)
+                },
+                modifier = customModifire
+            )
+        }
+    }
+
+    when(selectedTabIndex){
+        0 -> TabContent1()
+        1 -> TabContent2()
+    }
+}
+
+@Composable
+private fun TabContent1(){
+    Box(
+        modifier = Modifier
+            .padding(
+                start = 35.dp,
+                end = 35.dp,
+                top = 15.dp
+            )
+    ) {
+        LazyColumn(
+            contentPadding = PaddingValues(15.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .requiredHeight(300.dp)
+                .fillMaxHeight()
+        ) {
+            items(100) {
+                Text(text = "Content #1 for Column # $it")
+            }
+        }
+    }
+}
+
+@Composable
+private fun TabContent2(){
+    Box(
+        modifier = Modifier
+            .padding(
+                start = 35.dp,
+                end = 35.dp,
+                top = 15.dp
+            )
+    ) {
+        LazyColumn(
+            contentPadding = PaddingValues(15.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .requiredHeight(300.dp)
+                .fillMaxHeight()
+        ) {
+            items(100) {
+                Text(text = "Content #2 for Column # $it")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+public fun TestFun() {
+    val state = rememberPagerState { 10 }
+    val animationScope = rememberCoroutineScope()
+    Column {
+        VerticalPager(
+            modifier = Modifier.weight(0.7f),
+            state = state
+        ) { page ->
+            Box(
+                modifier = Modifier
+                    .padding(10.dp)
+                    .background(Color.Blue)
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = page.toString(), fontSize = 32.sp)
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .weight(0.3f)
+                .fillMaxWidth(), contentAlignment = Alignment.Center
+        ) {
+            Button(onClick = {
+                animationScope.launch {
+                    state.animateScrollToPage(state.currentPage + 1)
+                }
+            }) {
+                Text(text = "Next Page")
+            }
+        }
     }
 }

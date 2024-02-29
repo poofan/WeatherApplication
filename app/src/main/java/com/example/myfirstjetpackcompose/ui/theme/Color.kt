@@ -13,7 +13,7 @@ val SeaBlue = Color(0f,110/255f, 137/255f, 0.8f )
 val PuertoRico = Color(68/255f,189/255f, 176/255f, 0.6f )
 val WhiteWithBlue = Color(185/255f,236/255f,236/255f)
 val WhiteLight = Color(0xBFFEFFFF)
-val GrayLight = Color(0xBFD2D3D3)
+val GrayLight = Color(0x59D2D3D3)
 val GrayLight50 = Color(0xFFEEF4F8)
 
 val BlueGreenHeavy = Color(0xBF489AB1)
