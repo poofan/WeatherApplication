@@ -1,6 +1,8 @@
 package com.example.myfirstjetpackcompose.activity.function
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.TweenSpec
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -13,20 +15,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -42,22 +39,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myfirstjetpackcompose.R
-import com.example.myfirstjetpackcompose.ui.theme.GrayLight
 import com.example.myfirstjetpackcompose.ui.theme.GrayLight50
-import com.example.myfirstjetpackcompose.ui.theme.WhiteWithBlue
 import com.example.myfirstjetpackcompose.ui.theme.helveticaFamily
 import kotlinx.coroutines.launch
 
@@ -67,8 +59,19 @@ import kotlinx.coroutines.launch
 @Composable
 @Preview(showBackground = true)
 fun CreateMainActivity() {
+    val configuration = LocalConfiguration.current
+    val orientation = configuration.orientation
+    val sidePadding = if (orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+        // Больший отступ при горизонтальной ориентации
+        45.dp
+    } else {
+        // Меньший отступ при вертикальной ориентации
+        35.dp
+    }
+
     Box(
         modifier = Modifier
+            .padding(start = sidePadding, end = sidePadding)
             .fillMaxWidth()
     ) {
         LazyColumn(
@@ -102,7 +105,7 @@ private fun ApplicationNameBox() {
     // основной контейнер, в котором хранится название приложения
     Box(
         modifier = Modifier
-            .padding(top = 35.dp, start = 35.dp)
+            .padding(top = 35.dp)
             .fillMaxWidth(),
         contentAlignment = Alignment.CenterStart
     ) {
@@ -121,7 +124,6 @@ private fun ApplicationNameBox() {
 /**
  * Функция отрисовки поля ввода города и кнопка обновить
  * */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun CreateTextEditAndButtonRefresh(onSubmit: (String) -> Unit) {
     // Текст, который ввёл пользователь
@@ -137,51 +139,41 @@ private fun CreateTextEditAndButtonRefresh(onSubmit: (String) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Card(
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(listOf(Color.Gray, Color.Gray))
+            TextField(
+                value = text.value,
+                onValueChange = { newText ->
+                    text.value = newText
+                },
+                label = { Text("Ваш город...") },
+                colors = TextFieldDefaults.colors(
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    cursorColor = Color.Black,
+                    unfocusedContainerColor = Color.Transparent
                 ),
+                singleLine = true,
                 modifier = Modifier
-                    .padding(start = 35.dp)
-                    .fillMaxWidth(0.6f),
-                colors = CardDefaults.cardColors(Color.Transparent)
-            ) {
-                TextField(
-                    value = text.value,
-                    onValueChange = { newText ->
-                        text.value = newText
-                    },
-                    label = { Text("Ваш город...", textAlign = TextAlign.Center) },
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        focusedTextColor = Color.Black,
-                        focusedContainerColor = Color.Transparent,
-                        focusedLabelColor = Color.Black,
-                        cursorColor = Color.Black
-                    ),
-                    singleLine = true
-                )
-            }
-            TextButton(
-                onClick = { },
+                    .weight(1f)
+                    .border(1.dp, Color.Gray, shape = MaterialTheme.shapes.small)
+            )
+            Box(
                 modifier = Modifier
-                    .padding(end = 65.dp)
-                    .size(55.dp),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(listOf(Color.Gray, Color.Gray))
-                ),
-                shape = MaterialTheme.shapes.medium
+                    .padding(start = 5.dp)
+                    .border(1.dp, Color.Gray, shape = MaterialTheme.shapes.medium)
+                    .size(56.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.refresh_button),
-                    contentDescription = "refresh_button"
-                )
+                TextButton(
+                    onClick = { /* Обработка нажатия */ },
+                    shape = MaterialTheme.shapes.medium // Форма применяется к кнопке, но рамка - к Box
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.refresh_button),
+                        contentDescription = "refresh_button"
+                    )
+                }
             }
         }
     }
@@ -201,7 +193,7 @@ private fun CreateMainTextTemperatureInfo() {
     // основной бокс, в котором будет лежать вся необходимая информация
     Box(
         modifier = Modifier
-            .padding(start = 35.dp, top = 25.dp, end = 35.dp)
+            .padding(top = 25.dp)
             .fillMaxWidth()
     ) {
         Column {
@@ -295,7 +287,7 @@ private fun CreateTabRowSwitch() {
         },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 35.dp, end = 35.dp, top = 35.dp)
+            .padding(top = 35.dp)
             .background(Color.Transparent)
     ) {
         tabList.forEachIndexed { index, s ->
@@ -329,56 +321,90 @@ private fun CreateTabRowSwitch() {
             )
         }
     }
-
-    when(selectedTabIndex){
-        0 -> TabContent1()
-        1 -> TabContent2()
+    Crossfade(
+        targetState = selectedTabIndex,
+        animationSpec = TweenSpec(
+            durationMillis = 500, // Длительность анимации в миллисекундах
+            easing = FastOutSlowInEasing
+        )
+    ) {
+        it
+        WeatherListInfo(it)
     }
 }
 
+/**
+ * Фукнция отрисовки прогоза погоды по :
+ * 1. Часам текущего дня
+ * 2. На неделю вперёд
+ * */
 @Composable
-private fun TabContent1(){
+private fun WeatherListInfo(selectedTabIndex: Int) {
     Box(
         modifier = Modifier
-            .padding(
-                start = 35.dp,
-                end = 35.dp,
-                top = 15.dp
-            )
+            .padding(top = 15.dp)
+            .fillMaxWidth(),
+        contentAlignment = Alignment.Center
     ) {
         LazyColumn(
             contentPadding = PaddingValues(15.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier
                 .requiredHeight(300.dp)
                 .fillMaxHeight()
         ) {
-            items(100) {
-                Text(text = "Content #1 for Column # $it")
-            }
-        }
-    }
-}
+            items(10) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    when (selectedTabIndex) {
+                        // если выбрана вкладка "По часам"
+                        0 -> {
+                            // время
+                            Text(
+                                text = "1$it:00",
+                                style = TextStyle(
+                                    fontSize = 20.sp
+                                )
+                            )
+                            // иконка состояния погоды
+                            Image(
+                                painter = painterResource(id = R.drawable.cloudy_icon),
+                                contentDescription = "weather_list_icons",
+                                modifier = Modifier
+                                    .size(40.dp)
+                            )
+                            // текущая температура
+                            Text(
+                                text = "18°C",
+                                style = TextStyle(
+                                    fontSize = 20.sp
+                                )
+                            )
+                        }
 
-@Composable
-private fun TabContent2(){
-    Box(
-        modifier = Modifier
-            .padding(
-                start = 35.dp,
-                end = 35.dp,
-                top = 15.dp
-            )
-    ) {
-        LazyColumn(
-            contentPadding = PaddingValues(15.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .requiredHeight(300.dp)
-                .fillMaxHeight()
-        ) {
-            items(100) {
-                Text(text = "Content #2 for Column # $it")
+                        // если выбрана вкладка "За неделю"
+                        1 -> {
+                            // название дня недели
+                            Text(
+                                text = "Day $it",
+                                style = TextStyle(
+                                    fontSize = 20.sp
+                                )
+                            )
+                            // температура наимаеньшая-наибольшая
+                            Text(
+                                text = "$it°C / 18°C",
+                                style = TextStyle(
+                                    fontSize = 20.sp
+                                )
+                            )
+                        }
+                    }
+                }
             }
         }
     }
