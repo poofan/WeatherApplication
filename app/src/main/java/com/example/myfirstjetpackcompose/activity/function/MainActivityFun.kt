@@ -1,5 +1,6 @@
 package com.example.myfirstjetpackcompose.activity.function
 
+import android.util.Log
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.TweenSpec
@@ -13,24 +14,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -39,15 +39,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.PopupProperties
 import com.example.myfirstjetpackcompose.R
 import com.example.myfirstjetpackcompose.ui.theme.GrayLight50
 import com.example.myfirstjetpackcompose.ui.theme.helveticaFamily
@@ -59,6 +63,9 @@ import kotlinx.coroutines.launch
 @Composable
 @Preview(showBackground = true)
 fun CreateMainActivity() {
+    val cityName = remember {
+        mutableStateOf("")
+    }
     val configuration = LocalConfiguration.current
     val orientation = configuration.orientation
     val sidePadding = if (orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
@@ -83,10 +90,12 @@ fun CreateMainActivity() {
                 ApplicationNameBox()
 
                 // Поле ввода локации и кнопка Обновить
-                CreateTextEditAndButtonRefresh(onSubmit = {})
+                CreateTextEditAndButtonRefresh(onTextSubmitted = {
+                    cityName.value = it
+                })
 
                 // Основной контейнер отображения текущей температуры
-                CreateMainTextTemperatureInfo()
+                CreateMainTextTemperatureInfo(cityName.value)
 
                 // отображение переключателя
                 CreateTabRowSwitch()
@@ -124,27 +133,78 @@ private fun ApplicationNameBox() {
 /**
  * Функция отрисовки поля ввода города и кнопка обновить
  * */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun CreateTextEditAndButtonRefresh(onSubmit: (String) -> Unit) {
+private fun CreateTextEditAndButtonRefresh(onTextSubmitted: (String) -> Unit) {
     // Текст, который ввёл пользователь
-    val text = remember { mutableStateOf("") }
+    val currentText = remember { mutableStateOf("") }
+    val initialText = remember { mutableStateOf("") }
 
-    // Создаем состояние, которое будет отслеживать, был ли курсор видимым
-    val isCursorVisible = remember { mutableStateOf(false) }
+    // Клавиатура пользователя
+    val softwareKeyboardController = LocalSoftwareKeyboardController.current
 
+    // запоминаем фокус на элементе
+    val focusManager = LocalFocusManager.current
+
+    // список городов
+    val cities = listOf(
+        "Москва",
+        "Санкт-Петербург",
+        "Новосибирск",
+        "Екатеринбург",
+        "Казань",
+        "Нижний Новгород",
+        "Челябинск",
+        "Самара",
+        "Омск",
+        "Ростов-на-Дону"
+    )
+
+    // отфильтрованный список (после введённого пользователем символа)
+    val filteredCities = remember { mutableListOf<String>() }
+
+    // скрыть/открыть выпадающий список
+    val isDropdownExpanded = remember { mutableStateOf(false) }
+
+    // функция для фильтрации городов
+    fun filterCities(input: String) {
+        filteredCities.clear()
+        filteredCities.addAll(cities.filter { it.contains(input, ignoreCase = true) })
+        isDropdownExpanded.value = true
+    }
+
+    /**
+     * функция делает следующее:
+     * 1. Передаёт введённый пользователем текст в функцию onTextSubmitted
+     * 2. Скрывает клавиатуру
+     * 3. Убирает фокус с поля TextField
+     * 4. Очиает поле TextField
+     * */
+    fun submitText() {
+        onTextSubmitted(currentText.value) // передаём в метод введённый текст
+        softwareKeyboardController?.hide() // скрываем клавиатуру
+        focusManager.clearFocus() // убираем фокус с поля
+        currentText.value = "" // Очищаем текст после отправки
+        filteredCities.clear() // очищаем список городов
+        isDropdownExpanded.value = false // скрываем выпадающий список
+    }
+
+    // основной контейнер
     Box(
         modifier = Modifier
             .padding(top = 20.dp)
+            .fillMaxSize()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        // контейнер, разделяющий поле ввода и кнопку обновить по строчно
+        Column(
+            modifier = Modifier.fillMaxWidth()
         ) {
+            // поле ввода названия города
             TextField(
-                value = text.value,
+                value = currentText.value,
                 onValueChange = { newText ->
-                    text.value = newText
+                    currentText.value = newText
+                    filterCities(newText)
                 },
                 label = { Text("Ваш город...") },
                 colors = TextFieldDefaults.colors(
@@ -155,26 +215,35 @@ private fun CreateTextEditAndButtonRefresh(onSubmit: (String) -> Unit) {
                 ),
                 singleLine = true,
                 modifier = Modifier
-                    .weight(1f)
                     .border(1.dp, Color.Gray, shape = MaterialTheme.shapes.small)
             )
-            Box(
+            // выпадающий список
+            DropdownMenu(
+                expanded = isDropdownExpanded.value,
+                onDismissRequest = {
+                    isDropdownExpanded.value = false
+
+                    // скрываем клавиатуру
+                    softwareKeyboardController?.hide()
+                },
                 modifier = Modifier
-                    .padding(start = 5.dp)
-                    .border(1.dp, Color.Gray, shape = MaterialTheme.shapes.medium)
-                    .size(56.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                TextButton(
-                    onClick = { /* Обработка нажатия */ },
-                    shape = MaterialTheme.shapes.medium // Форма применяется к кнопке, но рамка - к Box
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.refresh_button),
-                        contentDescription = "refresh_button"
-                    )
-                }
-            }
+                    .align(Alignment.CenterHorizontally),
+                content = {
+                    filteredCities.forEach { city ->
+                        Log.d("MyTag", city)
+                        DropdownMenuItem(
+                            text = {
+                                Text(text = city)
+                            },
+                            onClick = {
+                                currentText.value = city
+                                initialText.value = city
+                                submitText()
+                            })
+                    }
+                },
+                properties = PopupProperties(focusable = false)
+            )
         }
     }
 }
@@ -189,7 +258,7 @@ private fun CreateTextEditAndButtonRefresh(onSubmit: (String) -> Unit) {
  * 5. Градусы (ощущается как ...)
  * */
 @Composable
-private fun CreateMainTextTemperatureInfo() {
+private fun CreateMainTextTemperatureInfo(cityName: String) {
     // основной бокс, в котором будет лежать вся необходимая информация
     Box(
         modifier = Modifier
@@ -199,7 +268,7 @@ private fun CreateMainTextTemperatureInfo() {
         Column {
             // Название города
             Text(
-                text = "Санкт-Петербург",
+                text = cityName.ifEmpty { "Москва" },
                 style = TextStyle(
                     fontWeight = FontWeight.Bold,
                     fontSize = 30.sp
@@ -326,9 +395,8 @@ private fun CreateTabRowSwitch() {
         animationSpec = TweenSpec(
             durationMillis = 500, // Длительность анимации в миллисекундах
             easing = FastOutSlowInEasing
-        )
+        ), label = ""
     ) {
-        it
         WeatherListInfo(it)
     }
 }
@@ -405,44 +473,6 @@ private fun WeatherListInfo(selectedTabIndex: Int) {
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-public fun TestFun() {
-    val state = rememberPagerState { 10 }
-    val animationScope = rememberCoroutineScope()
-    Column {
-        VerticalPager(
-            modifier = Modifier.weight(0.7f),
-            state = state
-        ) { page ->
-            Box(
-                modifier = Modifier
-                    .padding(10.dp)
-                    .background(Color.Blue)
-                    .fillMaxWidth()
-                    .aspectRatio(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = page.toString(), fontSize = 32.sp)
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .weight(0.3f)
-                .fillMaxWidth(), contentAlignment = Alignment.Center
-        ) {
-            Button(onClick = {
-                animationScope.launch {
-                    state.animateScrollToPage(state.currentPage + 1)
-                }
-            }) {
-                Text(text = "Next Page")
             }
         }
     }
