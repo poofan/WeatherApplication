@@ -95,6 +95,7 @@ fun CreateMainActivity(context: Context) {
                 // Поле ввода локации и кнопка Обновить
                 CreateTextEditAndButtonRefresh(onTextSubmitted = {
                     cityName.value = it
+                    saveCityName(it, context)
                 })
 
                 // Основной контейнер отображения текущей температуры
@@ -103,13 +104,6 @@ fun CreateMainActivity(context: Context) {
                 // отображение переключателя
                 CreateTabRowSwitch()
             }
-        }
-    }
-
-    // Сохраним город, если были измнения
-    DisposableEffect(Unit) {
-        onDispose {
-            saveCityName(cityName.value, context)
         }
     }
 }
@@ -496,7 +490,10 @@ private const val CITY_NAME_KEY = "cityName"
 
 private fun saveCityName(cityName: String, context: Context) {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    prefs.edit().putString(CITY_NAME_KEY, cityName).apply()
+    val editor = prefs.edit()
+    editor.clear() // Очищаем кэш
+    editor.putString(CITY_NAME_KEY, cityName)
+    editor.apply()
 }
 
 private fun loadCityName(context: Context): String {

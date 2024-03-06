@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.compose.ui.platform.LocalContext
 import com.example.myfirstjetpackcompose.activity.function.CreateMainActivity
 
 class MainActivity : ComponentActivity() {
@@ -13,7 +14,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            CreateMainActivity(application.applicationContext)
+            CreateMainActivity(LocalContext.current)
         }
     }
 }
