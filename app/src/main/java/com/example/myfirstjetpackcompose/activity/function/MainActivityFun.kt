@@ -1,298 +1,502 @@
 package com.example.myfirstjetpackcompose.activity.function
 
+import android.content.Context
+import android.util.Log
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.TweenSpec
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.PopupProperties
 import com.example.myfirstjetpackcompose.R
-import com.example.myfirstjetpackcompose.pojo.WeatherPojo
-import com.example.myfirstjetpackcompose.ui.theme.BlueGreenMedium
-import com.example.myfirstjetpackcompose.ui.theme.BlueGreenHeavy
-import com.example.myfirstjetpackcompose.ui.theme.BlueGreenLight
-import com.example.myfirstjetpackcompose.ui.theme.PuertoRico
-import com.example.myfirstjetpackcompose.ui.theme.SeaBlue
-import com.example.myfirstjetpackcompose.ui.theme.WhiteLight
-import com.example.myfirstjetpackcompose.ui.theme.WhiteWithBlue
+import com.example.myfirstjetpackcompose.ui.theme.GrayLight50
 import com.example.myfirstjetpackcompose.ui.theme.helveticaFamily
+import kotlinx.coroutines.launch
 
 /**
- * Главная функция отрисовки секции с Box-контейнером, который содержит информацию (другие контейнеры):</br>
- * 1. Текущая дата со временем и днём недели</br>
- * 2. Картинка с текущей погодой (солнечно, облачно и т.д.)</br>
- * 3. Температуру в градусах цельсия (максимальную и минимальную)</br>
- * 4. Текущую температуру в градусах цельсия</br>
- * 5. Название города</br>
- * 6. Процент влажности</br>
- * 7. Скорость ветра</br>
- * 8. Прогноз на неделю, где отображается:
- * - Дни недели
- * - Средняя температура за день
- * - Иконка погоды (солнечно, облачно и т.д.)
+ * Основная функция отрисовки главного окна приложения
  * */
-@Preview(showBackground = true)
 @Composable
-fun MainWeatherTemplateBox() {
-    val applicationName = "Weather"
+fun CreateMainActivity(context: Context) {
+    val cityName = rememberSaveable{
+        mutableStateOf(loadCityName(context))
+    }
+
+    val configuration = LocalConfiguration.current
+    val orientation = configuration.orientation
+    val sidePadding = if (orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+        // Больший отступ при горизонтальной ориентации
+        45.dp
+    } else {
+        // Меньший отступ при вертикальной ориентации
+        35.dp
+    }
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(SeaBlue, PuertoRico)
-                )
-            )
+            .padding(start = sidePadding, end = sidePadding)
+            .fillMaxWidth()
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Добавим текст (название приложения)
-            Text(
-                fontSize = 24.sp,
-                text = applicationName.uppercase(),
-                textAlign = TextAlign.Center,
-                style = TextStyle(
-                    fontFamily = helveticaFamily,
-                    letterSpacing = 25.sp,
-                    color = WhiteWithBlue
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.CenterHorizontally)
-                    .padding(15.dp)
-            )
-            CardWeatherForCurrentDay(WeatherPojo())
+        LazyColumn(
+            contentPadding = PaddingValues(15.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(count = 1) {
+                // Название приложения
+                ApplicationNameBox()
+
+                // Поле ввода локации и кнопка Обновить
+                CreateTextEditAndButtonRefresh(onTextSubmitted = {
+                    cityName.value = it
+                    saveCityName(it, context)
+                })
+
+                // Основной контейнер отображения текущей температуры
+                CreateMainTextTemperatureInfo(cityName.value)
+
+                // отображение переключателя
+                CreateTabRowSwitch()
+            }
         }
     }
 }
 
 /**
- * Функция отрисовки секции-карточки, содержащей:
- * 1. Текущая дата со временем и днём недели</br>
- * 2. Картинка с текущей погодой (солнечно, облачно и т.д.)</br>
- * 3. Температуру в градусах цельсия (максимальную и минимальную)</br>
- * 4. Текущую температуру в градусах цельсия</br>
- * 5. Название города</br>
- * 6. Процент влажности</br>
- * 7. Скорость ветра
+ * Функция отрисовки названия прогноза погоды
  * */
 @Composable
-fun CardWeatherForCurrentDay(weatherPojo: WeatherPojo) {
-    Card(
+private fun ApplicationNameBox() {
+    val appName = "Weather App"
+
+    // основной контейнер, в котором хранится название приложения
+    Box(
         modifier = Modifier
-            .padding(start = 10.dp, end = 10.dp)
-            .fillMaxHeight(0.7f),
-        elevation = CardDefaults.elevatedCardElevation(8.dp)
+            .padding(top = 35.dp)
+            .fillMaxWidth(),
+        contentAlignment = Alignment.CenterStart
     ) {
+        // Элемент "Название приложения"
+        Text(
+            style = TextStyle(
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = helveticaFamily,
+            ),
+            text = appName
+        )
+    }
+}
+
+/**
+ * Функция отрисовки поля ввода города и кнопка обновить
+ * */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun CreateTextEditAndButtonRefresh(onTextSubmitted: (String) -> Unit) {
+    // Текст, который ввёл пользователь
+    val currentText = remember { mutableStateOf("") }
+    val initialText = remember { mutableStateOf("") }
+
+    // Клавиатура пользователя
+    val softwareKeyboardController = LocalSoftwareKeyboardController.current
+
+    // запоминаем фокус на элементе
+    val focusManager = LocalFocusManager.current
+
+    // список городов
+    val cities = listOf(
+        "Москва",
+        "Санкт-Петербург",
+        "Новосибирск",
+        "Екатеринбург",
+        "Казань",
+        "Нижний Новгород",
+        "Челябинск",
+        "Самара",
+        "Омск",
+        "Ростов-на-Дону"
+    )
+
+    // отфильтрованный список (после введённого пользователем символа)
+    val filteredCities = remember { mutableListOf<String>() }
+
+    // скрыть/открыть выпадающий список
+    val isDropdownExpanded = remember { mutableStateOf(false) }
+
+    // функция для фильтрации городов
+    fun filterCities(input: String) {
+        filteredCities.clear()
+        filteredCities.addAll(cities.filter { it.contains(input, ignoreCase = true) })
+        isDropdownExpanded.value = true
+    }
+
+    /**
+     * функция делает следующее:
+     * 1. Передаёт введённый пользователем текст в функцию onTextSubmitted
+     * 2. Скрывает клавиатуру
+     * 3. Убирает фокус с поля TextField
+     * 4. Очиает поле TextField
+     * */
+    fun submitText() {
+        onTextSubmitted(currentText.value) // передаём в метод введённый текст
+        softwareKeyboardController?.hide() // скрываем клавиатуру
+        focusManager.clearFocus() // убираем фокус с поля
+        currentText.value = "" // Очищаем текст после отправки
+        filteredCities.clear() // очищаем список городов
+        isDropdownExpanded.value = false // скрываем выпадающий список
+    }
+
+    // основной контейнер
+    Box(
+        modifier = Modifier
+            .padding(top = 20.dp)
+            .fillMaxSize()
+    ) {
+        // контейнер, разделяющий поле ввода и кнопку обновить по строчно
         Column(
-            modifier = Modifier
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(BlueGreenHeavy, BlueGreenMedium, BlueGreenLight),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // поле ввода названия города
+            TextField(
+                value = currentText.value,
+                onValueChange = { newText ->
+                    currentText.value = newText
+                    filterCities(newText)
+                },
+                label = { Text("Ваш город...") },
+                colors = TextFieldDefaults.colors(
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    cursorColor = Color.Black,
+                    unfocusedContainerColor = Color.Transparent
+                ),
+                singleLine = true,
+                modifier = Modifier
+                    .border(1.dp, Color.Gray, shape = MaterialTheme.shapes.small)
+            )
+            // выпадающий список
+            DropdownMenu(
+                expanded = isDropdownExpanded.value,
+                onDismissRequest = {
+                    isDropdownExpanded.value = false
+
+                    // скрываем клавиатуру
+                    softwareKeyboardController?.hide()
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally),
+                content = {
+                    filteredCities.forEach { city ->
+                        Log.d("MyTag", city)
+                        DropdownMenuItem(
+                            text = {
+                                Text(text = city)
+                            },
+                            onClick = {
+                                currentText.value = city
+                                initialText.value = city
+                                submitText()
+                            })
+                    }
+                },
+                properties = PopupProperties(focusable = false)
+            )
+        }
+    }
+}
+
+
+/**
+ * Функция отрисовки текста:
+ * 1. Название города
+ * 2. Градусы цельсия (текущие)
+ * 3. Состояние погоды (облачно, ясно и т.д.)
+ * 4. Картинка (иконка) состояния погоды
+ * 5. Градусы (ощущается как ...)
+ * */
+@Composable
+private fun CreateMainTextTemperatureInfo(cityName: String) {
+    // основной бокс, в котором будет лежать вся необходимая информация
+    Box(
+        modifier = Modifier
+            .padding(top = 25.dp)
+            .fillMaxWidth()
+    ) {
+        Column {
+            // Название города
+            Text(
+                text = cityName,
+                style = TextStyle(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 30.sp
+                )
+            )
+            // инфо по текущей температуре
+            Row(
+                modifier = Modifier.padding(top = 10.dp)
+            ) {
+                // градусы цельсия
+                Text(
+                    text = "23°C,",
+                    style = TextStyle(
+                        fontSize = 24.sp
                     )
                 )
-                .fillMaxSize()
-        ) {
-            // Текст Название города
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp),
-                text = "Санкт-Петербург",
-                style = TextStyle(
-                    fontSize = 35.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = WhiteLight
-                ),
-                textAlign = TextAlign.Center
-            )
+                // Описание состояния погоды
+                Text(
+                    modifier = Modifier.padding(start = 10.dp),
+                    text = "Ясно",
+                    style = TextStyle(
+                        fontSize = 24.sp
+                    )
+                )
+            }
+            // инфо по "ощущается как ..."
             Row(
                 modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(top = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // День недели, дата, скорость ветра, влажность
-                Column {
-                    // День недели
-                    Text(
-                        modifier = Modifier
-                            .padding(start = 15.dp, top = 30.dp),
-                        text = "Понедельник",
-                        style = TextStyle(
-                            fontSize = 30.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = WhiteLight
-                        )
-                    )
-                    // Дата
-                    Text(
-                        modifier = Modifier
-                            .padding(start = 15.dp, top = 10.dp),
-                        text = "26.02.2024",
-                        style = TextStyle(
-                            fontSize = 25.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = WhiteLight
-                        )
-                    )
-                    // Скорость ветра
-                    Row {
-                        Image(
-                            painter = painterResource(id = R.drawable.wind_icon),
-                            contentDescription = "drop_icon",
-                            modifier = Modifier
-                                .padding(start = 10.dp, top = 15.dp)
-                                .size(35.dp)
-                        )
-                        Text(
-                            modifier = Modifier
-                                .padding(start = 8.dp, top = 13.dp),
-                            text = "6 км/ч",
-                            style = TextStyle(
-                                fontSize = 25.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = WhiteLight
-                            )
-                        )
-                    }
-
-                    // Влажность
-                    Row {
-                        Image(
-                            painter = painterResource(id = R.drawable.drop_icon),
-                            contentDescription = "drop_icon",
-                            modifier = Modifier
-                                .padding(start = 10.dp, top = 15.dp)
-                                .size(35.dp)
-                        )
-                        Text(
-                            modifier = Modifier
-                                .padding(top = 10.dp),
-                            text = "30%",
-                            style = TextStyle(
-                                fontSize = 25.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = WhiteLight
-                            )
-                        )
-                    }
-                }
-                // Строки с температурой
-                Row(
-                    modifier = Modifier.padding(end = 15.dp)
-                ) {
-                    // стрелка вверх
-                    Image(
-                        modifier = Modifier
-                            .padding(top = 35.dp),
-                        painter = painterResource(id = R.drawable.arrow_up_icon),
-                        contentDescription = "High temperature"
-                    )
-                    // градусы (максимальная температура за сегодня)
-                    Text(
-                        text = "18°",
-                        modifier = Modifier
-                            .padding(top = 30.dp),
-                        style = TextStyle(
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = WhiteLight
-                        )
-                    )
-                    // стрелка вниз
-                    Image(
-                        modifier = Modifier
-                            .padding(top = 35.dp),
-                        painter = painterResource(id = R.drawable.arrow_down_icon),
-                        contentDescription = "Low temperature"
-                    )
-                    // градусы (минимальная температура за сегодня)
-                    Text(
-                        text = "18°",
-                        modifier = Modifier
-                            .padding(top = 30.dp),
-                        style = TextStyle(
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = WhiteLight
-                        )
-                    )
-                }
-            }
-            Row(modifier = Modifier
-                .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+                // иконка состояния погоды
                 Image(
+                    modifier = Modifier.size(40.dp),
                     painter = painterResource(id = R.drawable.cloudy_icon),
-                    contentDescription = "cloudy_img",
-                    modifier = Modifier
-                        .size(200.dp)
-                        .padding(start = 10.dp)
+                    contentDescription = "icon_feels_like_image",
+                )
+                // температура "ощущается как..."
+                Text(
+                    modifier = Modifier.padding(start = 10.dp),
+                    text = "Ощущается как",
+                    style = TextStyle(
+                        fontSize = 16.sp
+                    )
                 )
                 Text(
-                    modifier = Modifier
-                        .padding(end = 10.dp),
-                    text = "20°",
+                    modifier = Modifier.padding(start = 10.dp),
+                    text = "25°C",
                     style = TextStyle(
-                        fontSize = 75.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        fontSize = 24.sp
                     )
                 )
             }
-        }
-    }
-    Card(
-        modifier = Modifier
-            .padding(10.dp),
-        elevation = CardDefaults.elevatedCardElevation(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(BlueGreenMedium, BlueGreenLight)
-                    )
-                ),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = "asdfasdfsd")
-            Text(text = "asdfasdfsd")
         }
     }
 }
 
 /**
- * Функция отрисовки карточки прогноза на неделю вперёд. Содержит:</br>
- * 1. Название дня недели
- * 2. Картинку погоды (солнечно, облачно и т.д.)
- * 3. Температуру среднюю за день
+ * Функция отрисовки переключателя между прогнозом на неделю и по часам текущего дня
  * */
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun CardWeatherForWeek() {
+private fun CreateTabRowSwitch() {
+    val tabList = listOf("По часам", "За неделю")
+    val pagerState = rememberPagerState { tabList.size }
+    val scrollScope = rememberCoroutineScope()
 
+    // Создаем состояние для отслеживания выбранной вкладки
+    val (selectedTabIndex, setSelectedTabIndex) = remember { mutableIntStateOf(0) }
+
+    TabRow(
+        selectedTabIndex = selectedTabIndex,
+        indicator = { pos ->
+            pos.forEachIndexed { index, tabPosition ->
+                if (index == selectedTabIndex) {
+                    TabRowDefaults.Indicator(
+                        Modifier
+                            .fillMaxWidth()
+                            .tabIndicatorOffset(currentTabPosition = tabPosition)
+                            .size(0.dp)
+                            .background(Color.Transparent)
+                    )
+                }
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 35.dp)
+            .background(Color.Transparent)
+    ) {
+        tabList.forEachIndexed { index, s ->
+            var customModifire: Modifier = Modifier.clickable {
+                setSelectedTabIndex(index)
+            }
+
+            if (selectedTabIndex == index) {
+                customModifire = Modifier
+                    .background(
+                        color = GrayLight50,
+                        shape = RoundedCornerShape(5.dp)
+                    )
+            }
+            Tab(
+                selectedContentColor = Color.Black,
+                unselectedContentColor = Color.Black,
+                selected = selectedTabIndex == index,
+                onClick = {
+                    setSelectedTabIndex(index)
+
+                    // Обновляем состояние pagerState при переключении вкладок
+                    scrollScope.launch {
+                        pagerState.scrollToPage(index)
+                    }
+                },
+                text = {
+                    Text(text = s)
+                },
+                modifier = customModifire
+            )
+        }
+    }
+    Crossfade(
+        targetState = selectedTabIndex,
+        animationSpec = TweenSpec(
+            durationMillis = 500, // Длительность анимации в миллисекундах
+            easing = FastOutSlowInEasing
+        ), label = ""
+    ) {
+        WeatherListInfo(it)
+    }
 }
 
+/**
+ * Фукнция отрисовки прогоза погоды по :
+ * 1. Часам текущего дня
+ * 2. На неделю вперёд
+ * */
+@Composable
+private fun WeatherListInfo(selectedTabIndex: Int) {
+    Box(
+        modifier = Modifier
+            .padding(top = 15.dp)
+            .fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        LazyColumn(
+            contentPadding = PaddingValues(15.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .requiredHeight(300.dp)
+                .fillMaxHeight()
+        ) {
+            items(10) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    when (selectedTabIndex) {
+                        // если выбрана вкладка "По часам"
+                        0 -> {
+                            // время
+                            Text(
+                                text = "1$it:00",
+                                style = TextStyle(
+                                    fontSize = 20.sp
+                                )
+                            )
+                            // иконка состояния погоды
+                            Image(
+                                painter = painterResource(id = R.drawable.cloudy_icon),
+                                contentDescription = "weather_list_icons",
+                                modifier = Modifier
+                                    .size(40.dp)
+                            )
+                            // текущая температура
+                            Text(
+                                text = "18°C",
+                                style = TextStyle(
+                                    fontSize = 20.sp
+                                )
+                            )
+                        }
+
+                        // если выбрана вкладка "За неделю"
+                        1 -> {
+                            // название дня недели
+                            Text(
+                                text = "Day $it",
+                                style = TextStyle(
+                                    fontSize = 20.sp
+                                )
+                            )
+                            // температура наимаеньшая-наибольшая
+                            Text(
+                                text = "$it°C / 18°C",
+                                style = TextStyle(
+                                    fontSize = 20.sp
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Сохранение в кэш приложения данных по городу
+ * */
+private const val PREFS_NAME = "MyPrefs"
+private const val CITY_NAME_KEY = "cityName"
+
+private fun saveCityName(cityName: String, context: Context) {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val editor = prefs.edit()
+    editor.clear() // Очищаем кэш
+    editor.putString(CITY_NAME_KEY, cityName)
+    editor.apply()
+}
+
+private fun loadCityName(context: Context): String {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    return prefs.getString(CITY_NAME_KEY, "Москва") ?: "Москва"
+}
