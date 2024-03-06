@@ -1,5 +1,6 @@
 package com.example.myfirstjetpackcompose.activity.function
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -34,10 +35,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -61,11 +64,11 @@ import kotlinx.coroutines.launch
  * Основная функция отрисовки главного окна приложения
  * */
 @Composable
-@Preview(showBackground = true)
-fun CreateMainActivity() {
-    val cityName = remember {
-        mutableStateOf("")
+fun CreateMainActivity(context: Context) {
+    val cityName = rememberSaveable{
+        mutableStateOf(loadCityName(context))
     }
+
     val configuration = LocalConfiguration.current
     val orientation = configuration.orientation
     val sidePadding = if (orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
@@ -100,6 +103,13 @@ fun CreateMainActivity() {
                 // отображение переключателя
                 CreateTabRowSwitch()
             }
+        }
+    }
+
+    // Сохраним город, если были измнения
+    DisposableEffect(Unit) {
+        onDispose {
+            saveCityName(cityName.value, context)
         }
     }
 }
@@ -268,7 +278,7 @@ private fun CreateMainTextTemperatureInfo(cityName: String) {
         Column {
             // Название города
             Text(
-                text = cityName.ifEmpty { "Москва" },
+                text = cityName,
                 style = TextStyle(
                     fontWeight = FontWeight.Bold,
                     fontSize = 30.sp
@@ -476,4 +486,20 @@ private fun WeatherListInfo(selectedTabIndex: Int) {
             }
         }
     }
+}
+
+/**
+ * Сохранение в кэш приложения данных по городу
+ * */
+private const val PREFS_NAME = "MyPrefs"
+private const val CITY_NAME_KEY = "cityName"
+
+private fun saveCityName(cityName: String, context: Context) {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    prefs.edit().putString(CITY_NAME_KEY, cityName).apply()
+}
+
+private fun loadCityName(context: Context): String {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    return prefs.getString(CITY_NAME_KEY, "Москва") ?: "Москва"
 }
